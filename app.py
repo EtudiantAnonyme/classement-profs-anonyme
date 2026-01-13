@@ -20,8 +20,8 @@ except FileNotFoundError:
 # =========================
 numeric_cols = ["clarte","organisation","equite","aide","stress","motivation","cote_r"]
 for col in numeric_cols:
-    df[col] = pd.to_numeric(df[col], errors='coerce')  # transforme les erreurs en NaN
-df = df.dropna(subset=numeric_cols, how='all')  # enlève les lignes totalement invalides
+    df[col] = pd.to_numeric(df[col], errors='coerce')
+df = df.dropna(subset=numeric_cols, how='all')
 
 # =========================
 # Liste dynamique des professeurs
@@ -29,7 +29,7 @@ df = df.dropna(subset=numeric_cols, how='all')  # enlève les lignes totalement 
 teachers = df["prof"].unique().tolist()
 
 # =========================
-# Liste des programmes et catégories de cours (Montmorency réaliste)
+# Programmes et cours (Montmorency)
 # =========================
 programs = {
     "Sciences de la nature": ["Biologie", "Chimie", "Physique", "Mathématiques", "Français", "Philosophie", "Anglais", "Éducation physique"],
@@ -37,7 +37,6 @@ programs = {
     "Arts, lettres et communication": ["Français", "Communication", "Littérature", "Anglais", "Philosophie", "Éducation physique"],
     "Arts visuels": ["Arts visuels", "Techniques d’atelier", "Histoire de l’art", "Éducation physique"],
     "Danse": ["Technique de danse", "Histoire de la danse", "Création chorégraphique", "Éducation physique"],
-
     "Techniques de l’informatique – Développement d’applications": ["Programmation", "Bases de données", "Développement Web", "Mathématiques appliquées", "Français", "Anglais"],
     "Techniques de l’informatique – Réseaux et sécurité": ["Réseaux & sécurité", "Systèmes & serveurs", "Infrastructure réseau", "Mathématiques appliquées", "Français", "Anglais"],
     "Techniques de laboratoire (multi‑disciplines)": ["Chimie analytique", "Biologie appliquée", "Physique de laboratoire", "Mathématiques appliquées", "Français"],
@@ -59,129 +58,117 @@ programs = {
 }
 
 # =========================
-# Ajouter un nouvel avis
+# Explications pour les utilisateurs
 # =========================
 st.title("Classement des professeurs - Cégep Montmorency")
-st.header("Ajouter un avis")
+st.info("""
+**Comment noter les professeurs :**
 
+- **Clarté (1-10)** : Comment le professeur explique le cours.
+- **Organisation (1-10)** : Préparation et structure du cours.
+- **Équité (1-10)** : Examens et évaluations justes.
+- **Aide (1-10)** : Disponibilité du professeur pour répondre aux questions.
+- **Stress (1-10)** : Plus c’est bas, mieux vous vous sentez dans le cours.
+- **Motivation (1-10)** : Le professeur vous motive à apprendre.
+- **Impact sur la côte R (1-10)** : Plus c’est bas, moins le cours impacte négativement votre R score.
+""")
+
+# =========================
+# Formulaire d'avis
+# =========================
+st.header("Ajouter un avis")
 with st.form("form_avis"):
     st.write("Choisissez un professeur existant ou tapez un nouveau :")
     
-    # Dropdown des professeurs existants
-    selected_teacher = st.selectbox(
-        "Professeur existant :", options=teachers, index=0 if teachers else None
-    )
-    
-    # Entrée texte pour un nouveau professeur
+    selected_teacher = st.selectbox("Professeur existant :", options=teachers, index=0 if teachers else None)
     typed_teacher = st.text_input("Ou tapez un nouveau professeur :")
-    
-    # Déterminer le nom final
     user_prof = typed_teacher if typed_teacher else selected_teacher
     
-    # Sélection du programme
     program = st.selectbox("Choisissez votre programme", list(programs.keys()))
-    
-    # Sélection du cours selon le programme
     cours = st.selectbox("Choisissez une catégorie", programs[program])
     
-    # Sliders
-    clarte = st.slider("Clarté", 1, 5, 3)
-    organisation = st.slider("Organisation", 1, 5, 3)
-    equite = st.slider("Équité / Examens justes", 1, 5, 3)
-    aide = st.slider("Disponibilité / Aide", 1, 5, 3)
-    stress = st.slider("Stress", 1, 5, 3)
-    motivation = st.slider("Motivation", 1, 5, 3)
-    cote_r = st.slider("Impact sur la côte R", 1, 5, 3)
+    clarte = st.slider("Clarté", 1, 10, 5)
+    organisation = st.slider("Organisation", 1, 10, 5)
+    equite = st.slider("Équité / Examens justes", 1, 10, 5)
+    aide = st.slider("Disponibilité / Aide", 1, 10, 5)
+    stress = st.slider("Stress", 1, 10, 5)
+    motivation = st.slider("Motivation", 1, 10, 5)
+    cote_r = st.slider("Impact sur la côte R", 1, 10, 5)
     
     submitted = st.form_submit_button("Soumettre l'avis")
     
     if submitted and user_prof:
-        # Fuzzy matching pour corriger les typos
-        def normalize(s):
-            return s.strip().lower()
-        
+        def normalize(s): return s.strip().lower()
         if teachers:
-            best_match, score = process.extractOne(
-                normalize(user_prof),
-                [normalize(t) for t in teachers]
-            )
-        else:
-            score = 0
+            best_match, score = process.extractOne(normalize(user_prof), [normalize(t) for t in teachers])
+        else: score = 0
         
         if score >= 80:
             matched_prof = teachers[[normalize(t) for t in teachers].index(best_match)]
             st.info(f"Nom du professeur reconnu : {matched_prof}")
         else:
             matched_prof = user_prof
-            if matched_prof not in teachers:
-                teachers.append(matched_prof)
-                st.info(f"Nouvel enseignant ajouté : {matched_prof}")
+            if matched_prof not in teachers: teachers.append(matched_prof)
         
-        # Sauvegarder l'avis
         nouvel_avis = {
-            "prof": matched_prof,
-            "programme": program,
-            "cours": cours,
-            "clarte": clarte,
-            "organisation": organisation,
-            "equite": equite,
-            "aide": aide,
-            "stress": stress,
-            "motivation": motivation,
-            "cote_r": cote_r
+            "prof": matched_prof, "programme": program, "cours": cours,
+            "clarte": clarte, "organisation": organisation, "equite": equite,
+            "aide": aide, "stress": stress, "motivation": motivation, "cote_r": cote_r
         }
         df = pd.concat([df, pd.DataFrame([nouvel_avis])], ignore_index=True)
         df.to_csv("avis.csv", index=False)
         st.success(f"Avis ajouté pour {matched_prof} ✅")
 
 # =========================
-# Voir le classement
+# Classement
 # =========================
 st.header("Voir le classement")
 
-cours_choisi = st.selectbox(
-    "Choisir le cours",
-    sorted(df["cours"].unique())
-)
+# Choix du cours
+cours_choisi = st.selectbox("Choisir le cours", sorted(df["cours"].unique()))
 
+# Choix du profil étudiant (avec le profil ordinaire ajouté)
 profil_etudiant = st.selectbox(
     "Profil étudiant",
-    ["cote_r", "apprentissage", "chill"]
+    ["cote_r","apprentissage","chill","stress_minimiser","equite_focus","ordinaire"]
 )
 
-# Moyenne par prof (en s'assurant que numeric_cols sont bien numériques)
-for col in numeric_cols:
-    df[col] = pd.to_numeric(df[col], errors='coerce')
+# S'assurer que toutes les colonnes numériques sont bien au format numérique
+df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
 
+# Moyenne par prof pour chaque cours
 df_grouped = df.groupby(["prof","cours"], as_index=False)[numeric_cols].mean()
 df_filtered = df_grouped[df_grouped["cours"] == cours_choisi].copy()
 
-# Poids selon le profil
-if profil_etudiant == "cote_r":
-    poids = {"pedagogie":0.25, "cote_r":0.40, "equite":0.20, "aide":0.10, "experience":0.05}
-elif profil_etudiant == "apprentissage":
-    poids = {"pedagogie":0.45, "cote_r":0.15, "equite":0.15, "aide":0.15, "experience":0.10}
-else:  # chill
-    poids = {"pedagogie":0.30, "cote_r":0.20, "equite":0.15, "aide":0.15, "experience":0.20}
+# Définition des pondérations selon le profil
+poids_profiles = {
+    "cote_r": {"pedagogie":0.25, "cote_r":0.40, "equite":0.20, "aide":0.10, "experience":0.05},
+    "apprentissage": {"pedagogie":0.45, "cote_r":0.15, "equite":0.15, "aide":0.15, "experience":0.10},
+    "chill": {"pedagogie":0.30, "cote_r":0.20, "equite":0.15, "aide":0.15, "experience":0.20},
+    "stress_minimiser": {"pedagogie":0.25, "cote_r":0.10, "equite":0.15, "aide":0.10, "experience":0.40},
+    "equite_focus": {"pedagogie":0.20, "cote_r":0.10, "equite":0.40, "aide":0.10, "experience":0.20},
+    "ordinaire": {"pedagogie":1, "cote_r":1, "equite":1, "aide":1, "experience":1}  # tous égaux
+}
+
+# Récupérer les poids pour le profil choisi
+poids = poids_profiles.get(profil_etudiant, poids_profiles["cote_r"])
 
 # Calcul des scores
 df_filtered["pedagogie"] = df_filtered[["clarte","organisation"]].mean(axis=1)
 df_filtered["experience"] = df_filtered[["stress","motivation"]].mean(axis=1)
 df_filtered["score_final_personnalise"] = (
-    df_filtered["pedagogie"] * poids["pedagogie"] +
-    df_filtered["cote_r"] * poids["cote_r"] +
-    df_filtered["equite"] * poids["equite"] +
-    df_filtered["aide"] * poids["aide"] +
-    df_filtered["experience"] * poids["experience"]
+    df_filtered["pedagogie"]*poids["pedagogie"] +
+    df_filtered["cote_r"]*poids["cote_r"] +
+    df_filtered["equite"]*poids["equite"] +
+    df_filtered["aide"]*poids["aide"] +
+    df_filtered["experience"]*poids["experience"]
 )
 
-# Classement
-classement_personnalise = df_filtered.sort_values(
-    by="score_final_personnalise", ascending=False
-)
+# Classement final
+classement_personnalise = df_filtered.sort_values(by="score_final_personnalise", ascending=False)
 
+# Affichage
 st.subheader(f"Classement pour {cours_choisi} ({profil_etudiant})")
 st.table(classement_personnalise[[
-    "prof","cours","score_final_personnalise",
-    "pedagogie","cote_r","equite","aide","experience"
+    "prof","cours","score_final_personnalise","pedagogie","cote_r","equite","aide","experience"
 ]])
