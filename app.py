@@ -8,12 +8,20 @@ from thefuzz import process
 try:
     df = pd.read_csv("avis.csv")
 except FileNotFoundError:
-    # créer un CSV vide si n'existe pas
+    # Créer un CSV vide si n'existe pas
     df = pd.DataFrame(columns=[
         "prof","programme","cours",
         "clarte","organisation","equite","aide","stress","motivation","cote_r"
     ])
     df.to_csv("avis.csv", index=False)
+
+# =========================
+# Convertir les colonnes numériques et nettoyer
+# =========================
+numeric_cols = ["clarte","organisation","equite","aide","stress","motivation","cote_r"]
+for col in numeric_cols:
+    df[col] = pd.to_numeric(df[col], errors='coerce')  # transforme les erreurs en NaN
+df = df.dropna(subset=numeric_cols, how='all')  # enlève les lignes totalement invalides
 
 # =========================
 # Liste dynamique des professeurs
@@ -24,14 +32,12 @@ teachers = df["prof"].unique().tolist()
 # Liste des programmes et catégories de cours (Montmorency réaliste)
 # =========================
 programs = {
-    
     "Sciences de la nature": ["Biologie", "Chimie", "Physique", "Mathématiques", "Français", "Philosophie", "Anglais", "Éducation physique"],
     "Sciences humaines": ["Histoire", "Géographie", "Psychologie", "Sociologie", "Mathématiques", "Français", "Philosophie", "Anglais", "Éducation physique"],
     "Arts, lettres et communication": ["Français", "Communication", "Littérature", "Anglais", "Philosophie", "Éducation physique"],
     "Arts visuels": ["Arts visuels", "Techniques d’atelier", "Histoire de l’art", "Éducation physique"],
     "Danse": ["Technique de danse", "Histoire de la danse", "Création chorégraphique", "Éducation physique"],
-    
-    
+
     "Techniques de l’informatique – Développement d’applications": ["Programmation", "Bases de données", "Développement Web", "Mathématiques appliquées", "Français", "Anglais"],
     "Techniques de l’informatique – Réseaux et sécurité": ["Réseaux & sécurité", "Systèmes & serveurs", "Infrastructure réseau", "Mathématiques appliquées", "Français", "Anglais"],
     "Techniques de laboratoire (multi‑disciplines)": ["Chimie analytique", "Biologie appliquée", "Physique de laboratoire", "Mathématiques appliquées", "Français"],
@@ -46,7 +52,10 @@ programs = {
     "Paysage et commercialisation en horticulture ornementale": ["Horticulture", "Paysage", "Gestion en horticulture", "Français"],
     "Muséologie": ["Documentation de collections", "Conservation", "Exposition", "Français"],
     "Soins infirmiers": ["Sciences infirmières", "Anatomie & physiologie", "Soins cliniques", "Français"],
-    "Physiothérapie": ["Anatomie", "Physiothérapie appliquée", "Biologie", "Français"]
+    "Physiothérapie": ["Anatomie", "Physiothérapie appliquée", "Biologie", "Français"],
+    "Génie civil": ["Mathématiques appliquées", "Topographie", "Matériaux & structures", "Dessin technique", "Français", "Anglais"],
+    "Génie mécanique": ["Mathématiques appliquées", "Physique", "Mécanique", "Dessin technique", "Français", "Anglais"],
+    "Génie informatique": ["Programmation", "Algorithmique", "Systèmes & réseaux", "Mathématiques appliquées", "Français", "Anglais"]
 }
 
 # =========================
@@ -67,15 +76,12 @@ with st.form("form_avis"):
     typed_teacher = st.text_input("Ou tapez un nouveau professeur :")
     
     # Déterminer le nom final
-    if typed_teacher:
-        user_prof = typed_teacher
-    else:
-        user_prof = selected_teacher
+    user_prof = typed_teacher if typed_teacher else selected_teacher
     
-    # Selection du programme (pour info / filtre des cours)
+    # Sélection du programme
     program = st.selectbox("Choisissez votre programme", list(programs.keys()))
     
-    # Selection du cours selon le programme
+    # Sélection du cours selon le programme
     cours = st.selectbox("Choisissez une catégorie", programs[program])
     
     # Sliders
@@ -90,9 +96,7 @@ with st.form("form_avis"):
     submitted = st.form_submit_button("Soumettre l'avis")
     
     if submitted and user_prof:
-        # =========================
         # Fuzzy matching pour corriger les typos
-        # =========================
         def normalize(s):
             return s.strip().lower()
         
@@ -113,9 +117,7 @@ with st.form("form_avis"):
                 teachers.append(matched_prof)
                 st.info(f"Nouvel enseignant ajouté : {matched_prof}")
         
-        # =========================
         # Sauvegarder l'avis
-        # =========================
         nouvel_avis = {
             "prof": matched_prof,
             "programme": program,
@@ -147,10 +149,11 @@ profil_etudiant = st.selectbox(
     ["cote_r", "apprentissage", "chill"]
 )
 
-# =========================
-# Moyenne par prof (agrégée toutes programmes)
-# =========================
-df_grouped = df.groupby(["prof","cours"], as_index=False).mean()
+# Moyenne par prof (en s'assurant que numeric_cols sont bien numériques)
+for col in numeric_cols:
+    df[col] = pd.to_numeric(df[col], errors='coerce')
+
+df_grouped = df.groupby(["prof","cours"], as_index=False)[numeric_cols].mean()
 df_filtered = df_grouped[df_grouped["cours"] == cours_choisi].copy()
 
 # Poids selon le profil
