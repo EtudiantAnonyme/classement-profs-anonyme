@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+from thefuzz import process
 
 # =========================
 # Charger les avis existants
@@ -8,20 +9,76 @@ try:
     df = pd.read_csv("avis.csv")
 except FileNotFoundError:
     # créer un CSV vide si n'existe pas
-    df = pd.DataFrame(columns=["prof","cours","clarte","organisation",
-                               "equite","aide","stress","motivation","cote_r"])
+    df = pd.DataFrame(columns=[
+        "prof","programme","cours",
+        "clarte","organisation","equite","aide","stress","motivation","cote_r"
+    ])
     df.to_csv("avis.csv", index=False)
+
+# =========================
+# Liste dynamique des professeurs
+# =========================
+teachers = df["prof"].unique().tolist()
+
+# =========================
+# Liste des programmes et catégories de cours (Montmorency réaliste)
+# =========================
+programs = {
+    
+    "Sciences de la nature": ["Biologie", "Chimie", "Physique", "Mathématiques", "Français", "Philosophie", "Anglais", "Éducation physique"],
+    "Sciences humaines": ["Histoire", "Géographie", "Psychologie", "Sociologie", "Mathématiques", "Français", "Philosophie", "Anglais", "Éducation physique"],
+    "Arts, lettres et communication": ["Français", "Communication", "Littérature", "Anglais", "Philosophie", "Éducation physique"],
+    "Arts visuels": ["Arts visuels", "Techniques d’atelier", "Histoire de l’art", "Éducation physique"],
+    "Danse": ["Technique de danse", "Histoire de la danse", "Création chorégraphique", "Éducation physique"],
+    
+    
+    "Techniques de l’informatique – Développement d’applications": ["Programmation", "Bases de données", "Développement Web", "Mathématiques appliquées", "Français", "Anglais"],
+    "Techniques de l’informatique – Réseaux et sécurité": ["Réseaux & sécurité", "Systèmes & serveurs", "Infrastructure réseau", "Mathématiques appliquées", "Français", "Anglais"],
+    "Techniques de laboratoire (multi‑disciplines)": ["Chimie analytique", "Biologie appliquée", "Physique de laboratoire", "Mathématiques appliquées", "Français"],
+    "Technologie du génie civil": ["Mathématiques appliquées", "Topographie", "Matériaux & structures", "Dessin technique", "Français", "Anglais"],
+    "Technologie de l’architecture": ["Conception architecturale", "Dessin technique", "Mathématiques appliquées", "Français", "Anglais"],
+    "Techniques de comptabilité et de gestion": ["Comptabilité", "Gestion d’entreprise", "Mathématiques appliquées", "Français", "Anglais"],
+    "Techniques de services financiers et d’assurances": ["Services financiers", "Risques & assurances", "Mathématiques appliquées", "Français", "Anglais"],
+    "Techniques de diététique": ["Nutrition", "Sciences alimentaires", "Méthodologie diététique", "Français"],
+    "Techniques de physiothérapie": ["Anatomie", "Physiothérapie appliquée", "Biologie humaine", "Français"],
+    "Techniques de sécurité incendie": ["Sécurité incendie", "Prévention des risques", "Mathématiques appliquées", "Français"],
+    "Techniques d’intégration multimédia": ["Multimédia", "Web & design", "Programmation multimédia", "Français", "Anglais"],
+    "Paysage et commercialisation en horticulture ornementale": ["Horticulture", "Paysage", "Gestion en horticulture", "Français"],
+    "Muséologie": ["Documentation de collections", "Conservation", "Exposition", "Français"],
+    "Soins infirmiers": ["Sciences infirmières", "Anatomie & physiologie", "Soins cliniques", "Français"],
+    "Physiothérapie": ["Anatomie", "Physiothérapie appliquée", "Biologie", "Français"]
+}
 
 # =========================
 # Ajouter un nouvel avis
 # =========================
-st.title("Classement des professeurs - Sciences de la nature")
-
+st.title("Classement des professeurs - Cégep Montmorency")
 st.header("Ajouter un avis")
 
 with st.form("form_avis"):
-    prof = st.text_input("Nom du professeur")
-    cours = st.text_input("Cours")
+    st.write("Choisissez un professeur existant ou tapez un nouveau :")
+    
+    # Dropdown des professeurs existants
+    selected_teacher = st.selectbox(
+        "Professeur existant :", options=teachers, index=0 if teachers else None
+    )
+    
+    # Entrée texte pour un nouveau professeur
+    typed_teacher = st.text_input("Ou tapez un nouveau professeur :")
+    
+    # Déterminer le nom final
+    if typed_teacher:
+        user_prof = typed_teacher
+    else:
+        user_prof = selected_teacher
+    
+    # Selection du programme (pour info / filtre des cours)
+    program = st.selectbox("Choisissez votre programme", list(programs.keys()))
+    
+    # Selection du cours selon le programme
+    cours = st.selectbox("Choisissez une catégorie", programs[program])
+    
+    # Sliders
     clarte = st.slider("Clarté", 1, 5, 3)
     organisation = st.slider("Organisation", 1, 5, 3)
     equite = st.slider("Équité / Examens justes", 1, 5, 3)
@@ -29,11 +86,39 @@ with st.form("form_avis"):
     stress = st.slider("Stress", 1, 5, 3)
     motivation = st.slider("Motivation", 1, 5, 3)
     cote_r = st.slider("Impact sur la côte R", 1, 5, 3)
+    
     submitted = st.form_submit_button("Soumettre l'avis")
-
-    if submitted:
+    
+    if submitted and user_prof:
+        # =========================
+        # Fuzzy matching pour corriger les typos
+        # =========================
+        def normalize(s):
+            return s.strip().lower()
+        
+        if teachers:
+            best_match, score = process.extractOne(
+                normalize(user_prof),
+                [normalize(t) for t in teachers]
+            )
+        else:
+            score = 0
+        
+        if score >= 80:
+            matched_prof = teachers[[normalize(t) for t in teachers].index(best_match)]
+            st.info(f"Nom du professeur reconnu : {matched_prof}")
+        else:
+            matched_prof = user_prof
+            if matched_prof not in teachers:
+                teachers.append(matched_prof)
+                st.info(f"Nouvel enseignant ajouté : {matched_prof}")
+        
+        # =========================
+        # Sauvegarder l'avis
+        # =========================
         nouvel_avis = {
-            "prof": prof,
+            "prof": matched_prof,
+            "programme": program,
             "cours": cours,
             "clarte": clarte,
             "organisation": organisation,
@@ -45,22 +130,27 @@ with st.form("form_avis"):
         }
         df = pd.concat([df, pd.DataFrame([nouvel_avis])], ignore_index=True)
         df.to_csv("avis.csv", index=False)
-        st.success("Avis ajouté ! ✅")
+        st.success(f"Avis ajouté pour {matched_prof} ✅")
 
 # =========================
-# Choisir le cours et profil pour voir le classement
+# Voir le classement
 # =========================
 st.header("Voir le classement")
 
-cours_choisi = st.selectbox("Choisir un cours", df["cours"].unique())
-profil_etudiant = st.selectbox("Profil étudiant",
-                               ["cote_r", "apprentissage", "chill"])
+cours_choisi = st.selectbox(
+    "Choisir le cours",
+    sorted(df["cours"].unique())
+)
+
+profil_etudiant = st.selectbox(
+    "Profil étudiant",
+    ["cote_r", "apprentissage", "chill"]
+)
 
 # =========================
-# Moyenne par prof
+# Moyenne par prof (agrégée toutes programmes)
 # =========================
 df_grouped = df.groupby(["prof","cours"], as_index=False).mean()
-
 df_filtered = df_grouped[df_grouped["cours"] == cours_choisi].copy()
 
 # Poids selon le profil
@@ -92,4 +182,3 @@ st.table(classement_personnalise[[
     "prof","cours","score_final_personnalise",
     "pedagogie","cote_r","equite","aide","experience"
 ]])
-
