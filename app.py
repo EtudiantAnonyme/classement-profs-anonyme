@@ -24,7 +24,6 @@ numeric_cols = ["clarte","organisation","equite","aide","stress","motivation","c
 for col in numeric_cols:
     df[col] = pd.to_numeric(df[col], errors="coerce")
 df = df.dropna(subset=numeric_cols, how="all")
-
 teachers = sorted(df["prof"].dropna().unique().tolist())
 
 # =========================
@@ -68,7 +67,6 @@ st.info("""
 - **Impact sur la côte R** → Plus c’est bas, mieux c’est (le système l’inverse automatiquement).
 
 ### Profils étudiants
-
 - **Ordinaire** : Moyenne simple, pas de pondération.
 - **Cote R** : Favorise les professeurs qui améliorent la côte R.
 - **Apprentissage** : Favorise la pédagogie et la motivation.
@@ -93,7 +91,7 @@ def identifiant_valide(user_id: str) -> bool:
 st.header("Ajouter un avis")
 
 with st.form("avis"):
-    user_id = st.text_input("Identifiant")
+    user_id = st.text_input("Identifiant (7 chiffres, commençant par 22-27)")
     prof_existant = st.selectbox("Professeur existant", [""] + teachers)
     prof_nouveau = st.text_input("Ou nouveau professeur")
     prof = prof_nouveau.strip() if prof_nouveau.strip() else prof_existant
@@ -113,10 +111,10 @@ with st.form("avis"):
 
     if envoyer and prof:
         if not identifiant_valide(user_id):
-            st.error("Identifiant invalide")
+            st.error("Identifiant invalide ! Doit contenir 7 chiffres et commencer par 22-27.")
         else:
             # Anti-double vote
-            already_voted = ("user_id" in df.columns) and ((df["user_id"] == user_id) & (df["prof"] == prof)).any()
+            already_voted = ((df["user_id"] == user_id) & (df["prof"] == prof)).any()
             if already_voted:
                 st.warning("Vous avez déjà voté pour ce professeur !")
             else:
@@ -154,7 +152,6 @@ df_filtered = df_grouped[df_grouped["cours"] == cours_choisi].copy()
 # Inversion des critères négatifs
 df_filtered["stress_inv"] = 10 - df_filtered["stress"]
 df_filtered["cote_r_inv"] = 10 - df_filtered["cote_r"]
-
 df_filtered["pedagogie"] = df_filtered[["clarte","organisation"]].mean(axis=1)
 df_filtered["experience"] = df_filtered[["stress_inv","motivation"]].mean(axis=1)
 
