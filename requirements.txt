@@ -1,4 +1,4 @@
 streamlit
 pandas
-thefuzz[speedup]
+thefuzz
 matplotlib

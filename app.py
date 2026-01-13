@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from thefuzz import process
 import matplotlib.pyplot as plt
+import re
 
 # =========================
 # Chargement des données
@@ -27,89 +28,33 @@ df = df.dropna(subset=numeric_cols, how="all")
 teachers = sorted(df["prof"].dropna().unique().tolist())
 
 # =========================
-# Programmes et cours
+# Programmes et cours Montmorency (complet)
 # =========================
 programs = {
-    # -----------------
-    # Programmes préuniversitaires
-    # -----------------
-    "Sciences de la nature": [
-        "Biologie", "Chimie", "Physique", "Mathématiques", "Français",
-        "Philosophie", "Anglais", "Éducation physique"
-    ],
-    "Sciences humaines": [
-        "Histoire", "Géographie", "Psychologie", "Sociologie",
-        "Mathématiques", "Français", "Philosophie", "Anglais", "Éducation physique"
-    ],
-    "Arts, lettres et communication": [
-        "Français", "Communication", "Littérature", "Anglais", "Philosophie", "Éducation physique"
-    ],
-    "Arts visuels": [
-        "Arts visuels", "Techniques d’atelier", "Histoire de l’art", "Éducation physique"
-    ],
-    "Danse": [
-        "Technique de danse", "Histoire de la danse", "Création chorégraphique", "Éducation physique"
-    ],
-
-    # -----------------
-    # Programmes techniques
-    # -----------------
-    "Techniques de l’informatique – Développement d’applications": [
-        "Programmation", "Bases de données", "Développement Web", "Mathématiques appliquées", "Français", "Anglais"
-    ],
-    "Techniques de l’informatique – Réseaux et sécurité": [
-        "Réseaux & sécurité", "Systèmes & serveurs", "Infrastructure réseau", "Mathématiques appliquées", "Français", "Anglais"
-    ],
-    "Techniques de laboratoire (multi‑disciplines)": [
-        "Chimie analytique", "Biologie appliquée", "Physique de laboratoire", "Mathématiques appliquées", "Français"
-    ],
-    "Technologie du génie civil": [
-        "Mathématiques appliquées", "Topographie", "Matériaux & structures", "Dessin technique", "Français", "Anglais"
-    ],
-    "Technologie de l’architecture": [
-        "Conception architecturale", "Dessin technique", "Mathématiques appliquées", "Français", "Anglais"
-    ],
-    "Techniques de comptabilité et de gestion": [
-        "Comptabilité", "Gestion d’entreprise", "Mathématiques appliquées", "Français", "Anglais"
-    ],
-    "Techniques de services financiers et d’assurances": [
-        "Services financiers", "Risques & assurances", "Mathématiques appliquées", "Français", "Anglais"
-    ],
-    "Techniques de diététique": [
-        "Nutrition", "Sciences alimentaires", "Méthodologie diététique", "Français"
-    ],
-    "Techniques de physiothérapie": [
-        "Anatomie", "Physiothérapie appliquée", "Biologie humaine", "Français"
-    ],
-    "Techniques de sécurité incendie": [
-        "Sécurité incendie", "Prévention des risques", "Mathématiques appliquées", "Français"
-    ],
-    "Techniques d’intégration multimédia": [
-        "Multimédia", "Web & design", "Programmation multimédia", "Français", "Anglais"
-    ],
-    "Paysage et commercialisation en horticulture ornementale": [
-        "Horticulture", "Paysage", "Gestion en horticulture", "Français"
-    ],
-    "Muséologie": [
-        "Documentation de collections", "Conservation", "Exposition", "Français"
-    ],
-    "Soins infirmiers": [
-        "Sciences infirmières", "Anatomie & physiologie", "Soins cliniques", "Français"
-    ],
-    "Physiothérapie": [
-        "Anatomie", "Physiothérapie appliquée", "Biologie", "Français"
-    ],
-    "Génie civil": [
-        "Mathématiques appliquées", "Topographie", "Matériaux & structures", "Dessin technique", "Français", "Anglais"
-    ],
-    "Génie mécanique": [
-        "Mathématiques appliquées", "Physique", "Mécanique", "Dessin technique", "Français", "Anglais"
-    ],
-    "Génie informatique": [
-        "Programmation", "Algorithmique", "Systèmes & réseaux", "Mathématiques appliquées", "Français", "Anglais"
-    ]
+    "Sciences de la nature": ["Biologie","Chimie","Physique","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
+    "Sciences humaines": ["Histoire","Géographie","Psychologie","Sociologie","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
+    "Arts, lettres et communication": ["Français","Communication","Littérature","Anglais","Philosophie","Éducation physique"],
+    "Arts visuels": ["Arts visuels","Techniques d’atelier","Histoire de l’art","Éducation physique"],
+    "Danse": ["Technique de danse","Histoire de la danse","Création chorégraphique","Éducation physique"],
+    "Techniques de l’informatique – Développement d’applications": ["Programmation","Bases de données","Développement Web","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de l’informatique – Réseaux et sécurité": ["Réseaux & sécurité","Systèmes & serveurs","Infrastructure réseau","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de laboratoire (multi‑disciplines)": ["Chimie analytique","Biologie appliquée","Physique de laboratoire","Mathématiques appliquées","Français"],
+    "Technologie du génie civil": ["Mathématiques appliquées","Topographie","Matériaux & structures","Dessin technique","Français","Anglais"],
+    "Technologie de l’architecture": ["Conception architecturale","Dessin technique","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de comptabilité et de gestion": ["Comptabilité","Gestion d’entreprise","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de services financiers et d’assurances": ["Services financiers","Risques & assurances","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de diététique": ["Nutrition","Sciences alimentaires","Méthodologie diététique","Français"],
+    "Techniques de physiothérapie": ["Anatomie","Physiothérapie appliquée","Biologie humaine","Français"],
+    "Techniques de sécurité incendie": ["Sécurité incendie","Prévention des risques","Mathématiques appliquées","Français"],
+    "Techniques d’intégration multimédia": ["Multimédia","Web & design","Programmation multimédia","Français","Anglais"],
+    "Paysage et commercialisation en horticulture ornementale": ["Horticulture","Paysage","Gestion en horticulture","Français"],
+    "Muséologie": ["Documentation de collections","Conservation","Exposition","Français"],
+    "Soins infirmiers": ["Sciences infirmières","Anatomie & physiologie","Soins cliniques","Français"],
+    "Physiothérapie": ["Anatomie","Physiothérapie appliquée","Biologie","Français"],
+    "Génie civil": ["Mathématiques appliquées","Topographie","Matériaux & structures","Dessin technique","Français","Anglais"],
+    "Génie mécanique": ["Mathématiques appliquées","Physique","Mécanique","Dessin technique","Français","Anglais"],
+    "Génie informatique": ["Programmation","Algorithmique","Systèmes & réseaux","Mathématiques appliquées","Français","Anglais"]
 }
-
 
 # =========================
 # Explications utilisateurs
@@ -125,7 +70,7 @@ st.info("""
 ### Profils étudiants
 
 - **Ordinaire** : Moyenne simple, pas de pondération.
-- **Cote R** : Favorise les professeurs qui aident à maximiser la côte R.
+- **Cote R** : Favorise les professeurs qui améliorent la côte R.
 - **Apprentissage** : Favorise la pédagogie et la motivation.
 - **Chill** : Favorise l’expérience agréable et modère le stress.
 - **Stress minimiser** : Favorise les professeurs qui réduisent le stress.
@@ -133,12 +78,22 @@ st.info("""
 """)
 
 # =========================
-# Ajouter un avis
+# Validation identifiant
+# =========================
+def identifiant_valide(user_id: str) -> bool:
+    if not user_id:
+        return False
+    if not re.fullmatch(r"\d{7}", user_id):
+        return False
+    return user_id[:2] in {"22","23","24","25","26","27"}
+
+# =========================
+# Formulaire ajout avis
 # =========================
 st.header("Ajouter un avis")
 
 with st.form("avis"):
-    user_id = st.text_input("Votre identifiant (pour éviter plusieurs votes sur le même prof)")
+    user_id = st.text_input("Identifiant")
     prof_existant = st.selectbox("Professeur existant", [""] + teachers)
     prof_nouveau = st.text_input("Ou nouveau professeur")
     prof = prof_nouveau.strip() if prof_nouveau.strip() else prof_existant
@@ -156,36 +111,32 @@ with st.form("avis"):
 
     envoyer = st.form_submit_button("Soumettre")
 
-    if envoyer and prof and user_id:
-        # Vérifier si l'utilisateur a déjà voté pour ce prof
-        already_voted = ((df["user_id"] == user_id) & (df["prof"] == prof)).any()
-        if already_voted:
-            st.warning("Vous avez déjà voté pour ce professeur !")
+    if envoyer and prof:
+        if not identifiant_valide(user_id):
+            st.error("Identifiant invalide")
         else:
-            # Fuzzy matching pour corriger les fautes de frappe
-            def norm(x): return x.lower().strip()
-            if teachers:
-                match, score = process.extractOne(norm(prof), [norm(t) for t in teachers])
-                if score >= 85:
-                    prof = teachers[[norm(t) for t in teachers].index(match)]
+            # Anti-double vote
+            already_voted = ("user_id" in df.columns) and ((df["user_id"] == user_id) & (df["prof"] == prof)).any()
+            if already_voted:
+                st.warning("Vous avez déjà voté pour ce professeur !")
+            else:
+                # Fuzzy matching pour corriger faute de frappe
+                def norm(x): return x.lower().strip()
+                if teachers:
+                    match, score = process.extractOne(norm(prof), [norm(t) for t in teachers])
+                    if score >= 85:
+                        prof = teachers[[norm(t) for t in teachers].index(match)]
 
-            nouvel_avis = {
-                "prof": prof,
-                "programme": programme,
-                "cours": cours,
-                "clarte": clarte,
-                "organisation": organisation,
-                "equite": equite,
-                "aide": aide,
-                "stress": stress,
-                "motivation": motivation,
-                "cote_r": cote_r,
-                "user_id": user_id
-            }
+                nouvel_avis = {
+                    "prof": prof, "programme": programme, "cours": cours,
+                    "clarte": clarte, "organisation": organisation, "equite": equite,
+                    "aide": aide, "stress": stress, "motivation": motivation, "cote_r": cote_r,
+                    "user_id": user_id
+                }
 
-            df = pd.concat([df, pd.DataFrame([nouvel_avis])], ignore_index=True)
-            df.to_csv("avis.csv", index=False)
-            st.success("Avis ajouté ✔")
+                df = pd.concat([df, pd.DataFrame([nouvel_avis])], ignore_index=True)
+                df.to_csv("avis.csv", index=False)
+                st.success("Avis ajouté ✔")
 
 # =========================
 # Classement
@@ -230,16 +181,14 @@ else:
         df_filtered["experience"] * p["experience"]
     )
 
-# Classement final trié
+# Classement trié
 df_filtered = df_filtered.sort_values("score_final", ascending=False).reset_index(drop=True)
 df_filtered.index += 1
 
 st.subheader(f"Classement – {cours_choisi} ({profil})")
 st.table(df_filtered[["prof","score_final","pedagogie","equite","aide","experience","cote_r_inv"]].round(2))
 
-# =========================
 # Top 3 graphique
-# =========================
 top3 = df_filtered.head(3)
 if not top3.empty:
     st.subheader("🎖 Top 3 professeurs")
