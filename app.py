@@ -91,7 +91,7 @@ def identifiant_valide(user_id: str) -> bool:
 st.header("Ajouter un avis")
 
 with st.form("avis"):
-    user_id = st.text_input("Identifiant (7 chiffres, commençant par 22-27)")
+    user_id = st.text_input("Identifiant montmorency")
     prof_existant = st.selectbox("Professeur existant", [""] + teachers)
     prof_nouveau = st.text_input("Ou nouveau professeur")
     prof = prof_nouveau.strip() if prof_nouveau.strip() else prof_existant
