@@ -3,58 +3,49 @@ import streamlit as st
 from thefuzz import process
 import matplotlib.pyplot as plt
 import uuid
-import sqlite3
-import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # =====================================================
-# TOKEN LOCAL ANTI-SPAM (1 vote / prof / navigateur)
+# CONFIGURATION SUPABASE
+# =====================================================
+SUPABASE_URL = "https://lrwblhccggtctaqlrccg.supabase.co"  # remplace par ton URL
+SUPABASE_KEY = "sb_publishable_5WzWNEn7jiF2ewvSfkK7vQ_t-nUvR4t"                     # remplace par ta clé anon
+
+conn = psycopg2.connect(
+    host=SUPABASE_URL.replace("https://", "").replace(".supabase.co", ".db.supabase.co"),
+    database="postgres",
+    user="postgres",
+    password=SUPABASE_KEY,
+    cursor_factory=RealDictCursor
+)
+c = conn.cursor()
+
+# =====================================================
+# TOKEN LOCAL ANTI-SPAM
 # =====================================================
 if "user_token" not in st.session_state:
     st.session_state["user_token"] = str(uuid.uuid4())
 USER_TOKEN = st.session_state["user_token"]
 
 # =====================================================
-# BASE DE DONNÉES SQLite PERSISTANTE
+# CHARGEMENT DES DONNÉES
 # =====================================================
-# Streamlit Cloud autorise l'écriture dans ce dossier
-db_path = os.path.join(st.secrets.get("app_dir", "."), "avis.db")  # fallback local "."
-conn = sqlite3.connect(db_path, check_same_thread=False)
-c = conn.cursor()
+c.execute("SELECT * FROM avis")
+rows = c.fetchall()
+df = pd.DataFrame(rows)
 
-# Création de la table si elle n'existe pas
-c.execute("""
-CREATE TABLE IF NOT EXISTS avis (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    prof TEXT,
-    programme TEXT,
-    cours TEXT,
-    clarte REAL,
-    organisation REAL,
-    equite REAL,
-    aide REAL,
-    stress REAL,
-    motivation REAL,
-    impact_note REAL,
-    user_token TEXT
-)
-""")
-conn.commit()
-
-# Chargement des données dans un DataFrame
-df = pd.read_sql("SELECT * FROM avis", conn)
-
-# =====================================================
-# NETTOYAGE DES DONNÉES
-# =====================================================
+# Nettoyage
 numeric_cols = ["clarte","organisation","equite","aide","stress","motivation","impact_note"]
-df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
-df = df.dropna(subset=numeric_cols, how="all")
-teachers = sorted(df["prof"].dropna().unique().tolist())
+if not df.empty:
+    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
+    df = df.dropna(subset=numeric_cols, how="all")
+teachers = sorted(df["prof"].dropna().unique().tolist()) if not df.empty else []
 
 # =====================================================
 # PROGRAMMES ET COURS (inchangé)
 # =====================================================
-programs = {
+programs = { 
     "Sciences de la nature": ["Biologie","Chimie","Physique","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
     "Sciences humaines": ["Histoire","Géographie","Psychologie","Sociologie","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
     "Arts, lettres et communication": ["Français","Communication","Littérature","Anglais","Philosophie","Éducation physique"],
@@ -80,12 +71,8 @@ programs = {
     "Génie informatique": ["Programmation","Algorithmique","Systèmes & réseaux","Mathématiques appliquées","Français","Anglais"]
 }
 
-# (Le reste du code Streamlit reste identique, y compris le formulaire et le classement)
-
-
-
 # =====================================================
-# TITRE ET EXPLICATIONS
+# TITRE ET INFO
 # =====================================================
 st.title("Classement des professeurs – Cégep Montmorency")
 st.info("""
@@ -114,7 +101,7 @@ Chaque profil ajuste le poids des critères pour refléter un objectif spécifiq
 """)
 
 # =====================================================
-# FORMULAIRE D’AJOUT D’AVIS
+# FORMULAIRE D’AVIS
 # =====================================================
 st.header("Ajouter un avis")
 
@@ -137,33 +124,35 @@ with st.form("formulaire_avis"):
     envoyer = st.form_submit_button("Soumettre l’avis")
 
     if envoyer and prof:
-        deja_vote = ((df["user_token"] == USER_TOKEN) & (df["prof"] == prof)).any()
+        deja_vote = ((df["user_token"] == USER_TOKEN) & (df["prof"] == prof)).any() if not df.empty else False
         if deja_vote:
             st.warning("Vous avez déjà évalué ce professeur.")
         else:
+            # Normalisation
             def norm(x): return x.lower().strip()
             if teachers:
                 match, score = process.extractOne(norm(prof), [norm(t) for t in teachers])
                 if score >= 85:
                     prof = teachers[[norm(t) for t in teachers].index(match)]
 
-            # Insertion dans SQLite
+            # Insertion Supabase
             c.execute("""
                 INSERT INTO avis (prof, programme, cours, clarte, organisation, equite, aide, stress, motivation, impact_note, user_token)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (prof, programme, cours, clarte, organisation, equite, aide, stress, motivation, impact_note, USER_TOKEN))
             conn.commit()
             st.success("Avis ajouté avec succès ✔")
 
-            # Actualiser DataFrame et professeurs
-            df = pd.read_sql("SELECT * FROM avis", conn)
+            # Reload data
+            c.execute("SELECT * FROM avis")
+            rows = c.fetchall()
+            df = pd.DataFrame(rows)
             teachers = sorted(df["prof"].dropna().unique().tolist())
 
 # =====================================================
 # CLASSEMENT DES PROFESSEURS
 # =====================================================
 st.header("Classement des professeurs")
-
 if df.empty:
     st.info("Aucun avis disponible pour le moment.")
     st.stop()
