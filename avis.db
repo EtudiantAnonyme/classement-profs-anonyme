@@ -1,0 +1,35 @@
+import sqlite3
+
+# =====================================================
+# 1️⃣ Connexion à la base SQLite (créera le fichier si inexistant)
+# =====================================================
+conn = sqlite3.connect("avis.db")  # avis.db sera créé dans le dossier courant
+c = conn.cursor()
+
+# =====================================================
+# 2️⃣ Création de la table avis
+# =====================================================
+c.execute("""
+CREATE TABLE IF NOT EXISTS avis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prof TEXT,
+    programme TEXT,
+    cours TEXT,
+    clarte REAL,
+    organisation REAL,
+    equite REAL,
+    aide REAL,
+    stress REAL,
+    motivation REAL,
+    impact_note REAL,
+    user_token TEXT
+)
+""")
+
+# =====================================================
+# 3️⃣ Validation et fermeture de la connexion
+# =====================================================
+conn.commit()
+conn.close()
+
+print("Base de données avis.db créée avec succès ✅")

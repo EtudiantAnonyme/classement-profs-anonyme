@@ -3,6 +3,7 @@ import streamlit as st
 from thefuzz import process
 import matplotlib.pyplot as plt
 import uuid
+import sqlite3
 
 # =====================================================
 # TOKEN LOCAL ANTI-SPAM (1 vote / prof / navigateur)
@@ -12,40 +13,37 @@ if "user_token" not in st.session_state:
 USER_TOKEN = st.session_state["user_token"]
 
 # =====================================================
-# CHARGEMENT DES DONNÉES
+# BASE DE DONNÉES SQLite
 # =====================================================
-try:
-    df = pd.read_csv("avis.csv")
-except FileNotFoundError:
-    df = pd.DataFrame(columns=[
-        "prof", "programme", "cours",
-        "clarte", "organisation", "equite", "aide",
-        "stress", "motivation", "impact_note",
-        "user_token"
-    ])
-    df.to_csv("avis.csv", index=False)
+conn = sqlite3.connect("avis.db", check_same_thread=False)
+c = conn.cursor()
 
-# =====================================================
-# COLONNES REQUISES
-# =====================================================
-numeric_cols = [
-    "clarte", "organisation", "equite", "aide",
-    "stress", "motivation", "impact_note"
-]
+# Création de la table si elle n'existe pas
+c.execute("""
+CREATE TABLE IF NOT EXISTS avis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prof TEXT,
+    programme TEXT,
+    cours TEXT,
+    clarte REAL,
+    organisation REAL,
+    equite REAL,
+    aide REAL,
+    stress REAL,
+    motivation REAL,
+    impact_note REAL,
+    user_token TEXT
+)
+""")
+conn.commit()
 
-required_cols = [
-    "prof", "programme", "cours",
-    "clarte", "organisation", "equite", "aide",
-    "stress", "motivation", "impact_note", "user_token"
-]
-
-for col in required_cols:
-    if col not in df.columns:
-        df[col] = pd.Series(dtype=float if col in numeric_cols else str)
+# Chargement des données dans un DataFrame
+df = pd.read_sql("SELECT * FROM avis", conn)
 
 # =====================================================
 # NETTOYAGE DES DONNÉES
 # =====================================================
+numeric_cols = ["clarte","organisation","equite","aide","stress","motivation","impact_note"]
 df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
 df = df.dropna(subset=numeric_cols, how="all")
 teachers = sorted(df["prof"].dropna().unique().tolist())
@@ -84,37 +82,35 @@ programs = {
 # =====================================================
 st.title("Classement des professeurs – Cégep Montmorency")
 st.info("""
-### Calcul des scores (échelle de 1 à 10)
+### Calcul des scores (0 à 10)
 
-Chaque critère reflète un aspect de l’enseignement ou de l’expérience du cours :  
+Chaque critère mesure un aspect de l’enseignement ou du cours :  
 
-- **Clarté** : Le professeur explique les notions de manière compréhensible et structurée.  
-- **Organisation** : Le cours est bien planifié, les évaluations sont cohérentes et le rythme adapté.  
-- **Équité** : Les notes et les évaluations sont justes et uniformes pour tous les étudiants.  
-- **Aide** : Le professeur est disponible et soutient les étudiants dans leur apprentissage.  
-- **Motivation** : Le cours est intéressant et suscite l’engagement des étudiants.  
-- **Stress** : Niveau de pression ressenti ; un score faible indique moins de stress.  
-- **Impact académique** : Influence perçue du professeur sur la performance et la réussite de l’étudiant.
+- **Clarté** : Compréhension et structuration des notions par le professeur.  
+- **Organisation** : Cohérence et planification du cours et des évaluations.  
+- **Équité** : Justesse et uniformité des notes pour tous.  
+- **Aide** : Disponibilité et soutien du professeur.  
+- **Motivation** : Intérêt et engagement suscité par le cours.  
+- **Stress** : Niveau de pression ressenti (score faible = moins de stress).  
+- **Impact académique** : Influence sur la réussite et la performance de l’étudiant.
 
-### Profils étudiants et pondération des critères
+### Profils étudiants
 
-Chaque profil correspond à un objectif d’évaluation particulier et influence le calcul du score final :  
+Chaque profil ajuste le poids des critères pour refléter un objectif spécifique :  
 
-- **Ordinaire** : Score moyen simple de tous les critères, sans pondération.  
-- **Cote R** : Met l’accent sur l’impact académique et la pédagogie pour favoriser la réussite scolaire.  
-- **Apprentissage** : Valorise la clarté, l’organisation et la motivation pour favoriser l’acquisition des connaissances.  
-- **Chill** : Privilégie le confort et l’expérience agréable du cours tout en restant attentif à la pédagogie.  
-- **Stress minimiser** : Accorde la priorité à la réduction du stress et au bien-être des étudiants.  
-- **Équité focus** : Met l’accent sur la justice et l’égalité dans les évaluations et le traitement des étudiants.
+- **Ordinaire** : Moyenne simple de tous les critères.  
+- **Cote R** : Favorise impact académique et pédagogie.  
+- **Apprentissage** : Accent sur clarté, organisation et motivation.  
+- **Chill** : Favorise confort et expérience agréable.  
+- **Stress minimiser** : Priorité à réduire le stress et favoriser le bien-être.  
+- **Équité focus** : Accent sur la justice et l’égalité des évaluations.
 """)
-
 
 # =====================================================
 # FORMULAIRE D’AJOUT D’AVIS
 # =====================================================
 st.header("Ajouter un avis")
 
-# Choix du professeur et programme en dehors du formulaire
 prof_existant = st.selectbox("Professeur existant", [""] + teachers)
 prof_nouveau = st.text_input("Ou ajouter un nouveau professeur")
 prof = prof_nouveau.strip() if prof_nouveau.strip() else prof_existant
@@ -122,7 +118,6 @@ prof = prof_nouveau.strip() if prof_nouveau.strip() else prof_existant
 programme = st.selectbox("Programme", list(programs.keys()))
 cours = st.selectbox("Cours", programs[programme])
 
-# FORMULAIRE pour les notes
 with st.form("formulaire_avis"):
     clarte = st.slider("Clarté", 0, 10, 5)
     organisation = st.slider("Organisation", 0, 10, 5)
@@ -145,23 +140,17 @@ with st.form("formulaire_avis"):
                 if score >= 85:
                     prof = teachers[[norm(t) for t in teachers].index(match)]
 
-            nouvel_avis = {
-                "prof": prof,
-                "programme": programme,
-                "cours": cours,
-                "clarte": clarte,
-                "organisation": organisation,
-                "equite": equite,
-                "aide": aide,
-                "stress": stress,
-                "motivation": motivation,
-                "impact_note": impact_note,
-                "user_token": USER_TOKEN
-            }
-
-            df = pd.concat([df, pd.DataFrame([nouvel_avis])], ignore_index=True)
-            df.to_csv("avis.csv", index=False)
+            # Insertion dans SQLite
+            c.execute("""
+                INSERT INTO avis (prof, programme, cours, clarte, organisation, equite, aide, stress, motivation, impact_note, user_token)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (prof, programme, cours, clarte, organisation, equite, aide, stress, motivation, impact_note, USER_TOKEN))
+            conn.commit()
             st.success("Avis ajouté avec succès ✔")
+
+            # Actualiser DataFrame et professeurs
+            df = pd.read_sql("SELECT * FROM avis", conn)
+            teachers = sorted(df["prof"].dropna().unique().tolist())
 
 # =====================================================
 # CLASSEMENT DES PROFESSEURS
