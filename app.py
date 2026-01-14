@@ -124,13 +124,13 @@ cours = st.selectbox("Cours", programs[programme])
 
 # FORMULAIRE pour les notes
 with st.form("formulaire_avis"):
-    clarte = st.slider("Clarté", 1, 10, 5)
-    organisation = st.slider("Organisation", 1, 10, 5)
-    equite = st.slider("Équité", 1, 10, 5)
-    aide = st.slider("Aide", 1, 10, 5)
-    stress = st.slider("Stress (bas = mieux)", 1, 10, 5)
-    motivation = st.slider("Motivation", 1, 10, 5)
-    impact_note = st.slider("Impact académique (bas = mieux)", 1, 10, 5)
+    clarte = st.slider("Clarté", 0, 10, 5)
+    organisation = st.slider("Organisation", 0, 10, 5)
+    equite = st.slider("Équité", 0, 10, 5)
+    aide = st.slider("Aide", 0, 10, 5)
+    stress = st.slider("Stress (bas = mieux)", 0, 10, 5)
+    motivation = st.slider("Motivation", 0, 10, 5)
+    impact_note = st.slider("Impact académique (bas = mieux)", 0, 10, 5)
 
     envoyer = st.form_submit_button("Soumettre l’avis")
 
