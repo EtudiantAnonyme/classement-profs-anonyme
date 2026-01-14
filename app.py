@@ -9,7 +9,6 @@ import uuid
 # =====================================================
 if "user_token" not in st.session_state:
     st.session_state["user_token"] = str(uuid.uuid4())
-
 USER_TOKEN = st.session_state["user_token"]
 
 # =====================================================
@@ -27,18 +26,28 @@ except FileNotFoundError:
     df.to_csv("avis.csv", index=False)
 
 # =====================================================
-# NETTOYAGE DES DONNÉES
+# COLONNES REQUISES
 # =====================================================
 numeric_cols = [
     "clarte", "organisation", "equite", "aide",
     "stress", "motivation", "impact_note"
 ]
 
-for col in numeric_cols:
-    df[col] = pd.to_numeric(df[col], errors="coerce")
+required_cols = [
+    "prof", "programme", "cours",
+    "clarte", "organisation", "equite", "aide",
+    "stress", "motivation", "impact_note", "user_token"
+]
 
+for col in required_cols:
+    if col not in df.columns:
+        df[col] = pd.Series(dtype=float if col in numeric_cols else str)
+
+# =====================================================
+# NETTOYAGE DES DONNÉES
+# =====================================================
+df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
 df = df.dropna(subset=numeric_cols, how="all")
-
 teachers = sorted(df["prof"].dropna().unique().tolist())
 
 # =====================================================
@@ -74,17 +83,16 @@ programs = {
 # TITRE ET EXPLICATIONS
 # =====================================================
 st.title("Classement des professeurs – Cégep Montmorency")
-
 st.info("""
-### Comment sont calculés les scores (échelle de 1 à 10)
+### Comment sont calculés les scores (1 à 10)
 
-- **Clarté** : Le professeur explique clairement la matière et rend les concepts compréhensibles.  
-- **Organisation** : Le cours est bien structuré (planification, évaluations, rythme).  
-- **Équité** : Les évaluations sont justes et cohérentes pour tous les étudiants.  
-- **Aide** : Le professeur est disponible et soutient les étudiants.  
-- **Motivation** : Le professeur rend le cours intéressant et engageant.  
-- **Stress** : Niveau de pression ressenti (plus bas = mieux).  
-- **Impact académique (note / Z‑score)** : Effet perçu du professeur sur la performance de l’étudiant.
+- **Clarté** : Le professeur explique clairement la matière.  
+- **Organisation** : Le cours est bien structuré et planifié.  
+- **Équité** : Les évaluations sont justes pour tous.  
+- **Aide** : Le professeur soutient les étudiants.  
+- **Motivation** : Le cours est engageant et intéressant.  
+- **Stress** : Pression ressentie (plus bas = mieux).  
+- **Impact académique (note / Z-score)** : Influence du professeur sur la note de l’étudiant.
 
 ### Profils étudiants
 - **Ordinaire** : Moyenne simple de tous les critères.  
@@ -118,7 +126,7 @@ with st.form("formulaire_avis"):
         list(programs.keys())
     )
 
-    # ✅ BUG CORRIGÉ : cours dépend bien du programme choisi
+    # ✅ BUG CORRIGÉ : cours dépend du programme choisi
     cours = st.selectbox(
         "Cours",
         programs[programme]
@@ -137,26 +145,20 @@ with st.form("formulaire_avis"):
     if envoyer and prof:
 
         # ANTI-SPAM : 1 vote par professeur par navigateur
-        deja_vote = (
-            (df["user_token"] == USER_TOKEN) &
-            (df["prof"] == prof)
-        ).any()
+        deja_vote = ((df["user_token"] == USER_TOKEN) & (df["prof"] == prof)).any()
 
         if deja_vote:
             st.warning("Vous avez déjà évalué ce professeur.")
         else:
             # Correction automatique des fautes de frappe
             def norm(x): return x.lower().strip()
-
             if teachers:
                 match, score = process.extractOne(
                     norm(prof),
                     [norm(t) for t in teachers]
                 )
                 if score >= 85:
-                    prof = teachers[
-                        [norm(t) for t in teachers].index(match)
-                    ]
+                    prof = teachers[[norm(t) for t in teachers].index(match)]
 
             nouvel_avis = {
                 "prof": prof,
@@ -172,11 +174,7 @@ with st.form("formulaire_avis"):
                 "user_token": USER_TOKEN
             }
 
-            df = pd.concat(
-                [df, pd.DataFrame([nouvel_avis])],
-                ignore_index=True
-            )
-
+            df = pd.concat([df, pd.DataFrame([nouvel_avis])], ignore_index=True)
             df.to_csv("avis.csv", index=False)
             st.success("Avis ajouté avec succès ✔")
 
@@ -196,83 +194,32 @@ cours_choisi = st.selectbox(
 
 profil = st.selectbox(
     "Profil étudiant",
-    [
-        "ordinaire",
-        "cote_r",
-        "apprentissage",
-        "chill",
-        "stress_minimiser",
-        "equite_focus"
-    ]
+    ["ordinaire","cote_r","apprentissage","chill","stress_minimiser","equite_focus"]
 )
 
-df_grouped = df.groupby(
-    ["prof", "cours"],
-    as_index=False
-)[numeric_cols].mean()
-
-df_filtered = df_grouped[
-    df_grouped["cours"] == cours_choisi
-].copy()
+df_grouped = df.groupby(["prof","cours"], as_index=False)[numeric_cols].mean()
+df_filtered = df_grouped[df_grouped["cours"] == cours_choisi].copy()
 
 # Inversion des critères négatifs
 df_filtered["stress_inv"] = 10 - df_filtered["stress"]
 df_filtered["impact_inv"] = 10 - df_filtered["impact_note"]
 
-df_filtered["pedagogie"] = df_filtered[
-    ["clarte", "organisation"]
-].mean(axis=1)
-
-df_filtered["experience"] = df_filtered[
-    ["stress_inv", "motivation"]
-].mean(axis=1)
+df_filtered["pedagogie"] = df_filtered[["clarte","organisation"]].mean(axis=1)
+df_filtered["experience"] = df_filtered[["stress_inv","motivation"]].mean(axis=1)
 
 # Pondérations
 poids = {
     "ordinaire": None,
-    "cote_r": {
-        "pedagogie": 0.25,
-        "impact": 0.40,
-        "equite": 0.20,
-        "aide": 0.10,
-        "experience": 0.05
-    },
-    "apprentissage": {
-        "pedagogie": 0.45,
-        "impact": 0.15,
-        "equite": 0.15,
-        "aide": 0.15,
-        "experience": 0.10
-    },
-    "chill": {
-        "pedagogie": 0.30,
-        "impact": 0.20,
-        "equite": 0.15,
-        "aide": 0.15,
-        "experience": 0.20
-    },
-    "stress_minimiser": {
-        "pedagogie": 0.25,
-        "impact": 0.10,
-        "equite": 0.15,
-        "aide": 0.10,
-        "experience": 0.40
-    },
-    "equite_focus": {
-        "pedagogie": 0.20,
-        "impact": 0.10,
-        "equite": 0.40,
-        "aide": 0.10,
-        "experience": 0.20
-    }
+    "cote_r": {"pedagogie":0.25,"impact":0.40,"equite":0.20,"aide":0.10,"experience":0.05},
+    "apprentissage": {"pedagogie":0.45,"impact":0.15,"equite":0.15,"aide":0.15,"experience":0.10},
+    "chill": {"pedagogie":0.30,"impact":0.20,"equite":0.15,"aide":0.15,"experience":0.20},
+    "stress_minimiser": {"pedagogie":0.25,"impact":0.10,"equite":0.15,"aide":0.10,"experience":0.40},
+    "equite_focus": {"pedagogie":0.20,"impact":0.10,"equite":0.40,"aide":0.10,"experience":0.20}
 }
 
 # Calcul score final
 if profil == "ordinaire":
-    df_filtered["score_final"] = df_filtered[
-        ["clarte", "organisation", "equite", "aide",
-         "motivation", "stress_inv", "impact_inv"]
-    ].mean(axis=1)
+    df_filtered["score_final"] = df_filtered[["clarte","organisation","equite","aide","motivation","stress_inv","impact_inv"]].mean(axis=1)
 else:
     p = poids[profil]
     df_filtered["score_final"] = (
@@ -283,17 +230,11 @@ else:
         + df_filtered["experience"] * p["experience"]
     )
 
-df_filtered = df_filtered.sort_values(
-    "score_final",
-    ascending=False
-).reset_index(drop=True)
-
+df_filtered = df_filtered.sort_values("score_final", ascending=False).reset_index(drop=True)
 df_filtered.index += 1
 
 st.subheader(f"Classement – {cours_choisi}")
-st.table(
-    df_filtered[["prof", "score_final"]].round(2)
-)
+st.table(df_filtered[["prof","score_final"]].round(2))
 
 # =====================================================
 # TOP 3 – GRAPHIQUE
@@ -302,8 +243,9 @@ top3 = df_filtered.head(3)
 
 if not top3.empty:
     st.subheader("🏆 Top 3 professeurs")
+    colors = ["gold","silver","bronze"][:len(top3)]
     fig, ax = plt.subplots()
-    ax.barh(top3["prof"], top3["score_final"])
+    ax.barh(top3["prof"], top3["score_final"], color=colors)
     ax.invert_yaxis()
     ax.set_xlabel("Score final")
     st.pyplot(fig)
