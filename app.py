@@ -4,6 +4,7 @@ from thefuzz import process
 import matplotlib.pyplot as plt
 import uuid
 import sqlite3
+import os
 
 # =====================================================
 # TOKEN LOCAL ANTI-SPAM (1 vote / prof / navigateur)
@@ -13,9 +14,11 @@ if "user_token" not in st.session_state:
 USER_TOKEN = st.session_state["user_token"]
 
 # =====================================================
-# BASE DE DONNÉES SQLite
+# BASE DE DONNÉES SQLite PERSISTANTE
 # =====================================================
-conn = sqlite3.connect("avis.db", check_same_thread=False)
+# Streamlit Cloud autorise l'écriture dans ce dossier
+db_path = os.path.join(st.secrets.get("app_dir", "."), "avis.db")  # fallback local "."
+conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 
 # Création de la table si elle n'existe pas
@@ -49,7 +52,7 @@ df = df.dropna(subset=numeric_cols, how="all")
 teachers = sorted(df["prof"].dropna().unique().tolist())
 
 # =====================================================
-# PROGRAMMES ET COURS (Montmorency)
+# PROGRAMMES ET COURS (inchangé)
 # =====================================================
 programs = {
     "Sciences de la nature": ["Biologie","Chimie","Physique","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
@@ -76,6 +79,10 @@ programs = {
     "Génie mécanique": ["Mathématiques appliquées","Physique","Mécanique","Dessin technique","Français","Anglais"],
     "Génie informatique": ["Programmation","Algorithmique","Systèmes & réseaux","Mathématiques appliquées","Français","Anglais"]
 }
+
+# (Le reste du code Streamlit reste identique, y compris le formulaire et le classement)
+
+
 
 # =====================================================
 # TITRE ET EXPLICATIONS
