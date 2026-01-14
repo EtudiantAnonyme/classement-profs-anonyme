@@ -18,9 +18,9 @@ try:
     df = pd.read_csv("avis.csv")
 except FileNotFoundError:
     df = pd.DataFrame(columns=[
-        "prof","programme","cours",
-        "clarte","organisation","equite","aide",
-        "stress","motivation","impact_note",
+        "prof", "programme", "cours",
+        "clarte", "organisation", "equite", "aide",
+        "stress", "motivation", "impact_note",
         "user_token"
     ])
     df.to_csv("avis.csv", index=False)
@@ -28,16 +28,26 @@ except FileNotFoundError:
 # =====================================================
 # COLONNES REQUISES
 # =====================================================
-numeric_cols = ["clarte","organisation","equite","aide","stress","motivation","impact_note"]
-required_cols = ["prof","programme","cours","clarte","organisation","equite","aide","stress","motivation","impact_note","user_token"]
+numeric_cols = [
+    "clarte", "organisation", "equite", "aide",
+    "stress", "motivation", "impact_note"
+]
+
+required_cols = [
+    "prof", "programme", "cours",
+    "clarte", "organisation", "equite", "aide",
+    "stress", "motivation", "impact_note", "user_token"
+]
+
 for col in required_cols:
     if col not in df.columns:
         df[col] = pd.Series(dtype=float if col in numeric_cols else str)
 
-# Nettoyage numérique
+# =====================================================
+# NETTOYAGE DES DONNÉES
+# =====================================================
 df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
 df = df.dropna(subset=numeric_cols, how="all")
-
 teachers = sorted(df["prof"].dropna().unique().tolist())
 
 # =====================================================
@@ -98,25 +108,23 @@ st.info("""
 # =====================================================
 st.header("Ajouter un avis")
 
+# Choix du professeur et programme en dehors du formulaire
+prof_existant = st.selectbox("Professeur existant", [""] + teachers)
+prof_nouveau = st.text_input("Ou ajouter un nouveau professeur")
+prof = prof_nouveau.strip() if prof_nouveau.strip() else prof_existant
+
+programme = st.selectbox("Programme", list(programs.keys()))
+cours = st.selectbox("Cours", programs[programme])
+
+# FORMULAIRE pour les notes
 with st.form("formulaire_avis"):
-
-    prof_existant = st.selectbox("Professeur existant", [""] + teachers, key="prof_select")
-    prof_nouveau = st.text_input("Ou ajouter un nouveau professeur", key="prof_new")
-    prof = prof_nouveau.strip() if prof_nouveau.strip() else prof_existant
-
-    # Programme sélectionné
-    programme = st.selectbox("Programme", list(programs.keys()), key="programme_select")
-
-    # Cours dépend du programme
-    cours = st.selectbox("Cours", programs[programme], key="cours_select")
-
-    clarte = st.slider("Clarté",1,10,5)
-    organisation = st.slider("Organisation",1,10,5)
-    equite = st.slider("Équité",1,10,5)
-    aide = st.slider("Aide",1,10,5)
-    stress = st.slider("Stress (bas = mieux)",1,10,5)
-    motivation = st.slider("Motivation",1,10,5)
-    impact_note = st.slider("Impact académique (bas = mieux)",1,10,5)
+    clarte = st.slider("Clarté", 1, 10, 5)
+    organisation = st.slider("Organisation", 1, 10, 5)
+    equite = st.slider("Équité", 1, 10, 5)
+    aide = st.slider("Aide", 1, 10, 5)
+    stress = st.slider("Stress (bas = mieux)", 1, 10, 5)
+    motivation = st.slider("Motivation", 1, 10, 5)
+    impact_note = st.slider("Impact académique (bas = mieux)", 1, 10, 5)
 
     envoyer = st.form_submit_button("Soumettre l’avis")
 
@@ -158,20 +166,17 @@ if df.empty:
     st.info("Aucun avis disponible pour le moment.")
     st.stop()
 
-cours_choisi = st.selectbox("Choisir un cours", sorted(df["cours"].unique()), key="choix_cours")
-profil = st.selectbox("Profil étudiant", ["ordinaire","cote_r","apprentissage","chill","stress_minimiser","equite_focus"], key="choix_profil")
+cours_choisi = st.selectbox("Choisir un cours", sorted(df["cours"].unique()))
+profil = st.selectbox("Profil étudiant", ["ordinaire","cote_r","apprentissage","chill","stress_minimiser","equite_focus"])
 
 df_grouped = df.groupby(["prof","cours"], as_index=False)[numeric_cols].mean()
 df_filtered = df_grouped[df_grouped["cours"] == cours_choisi].copy()
 
-# Inversion des critères négatifs
 df_filtered["stress_inv"] = 10 - df_filtered["stress"]
 df_filtered["impact_inv"] = 10 - df_filtered["impact_note"]
-
 df_filtered["pedagogie"] = df_filtered[["clarte","organisation"]].mean(axis=1)
 df_filtered["experience"] = df_filtered[["stress_inv","motivation"]].mean(axis=1)
 
-# Pondérations par profil
 poids = {
     "ordinaire": None,
     "cote_r": {"pedagogie":0.25,"impact":0.40,"equite":0.20,"aide":0.10,"experience":0.05},
@@ -181,17 +186,16 @@ poids = {
     "equite_focus": {"pedagogie":0.20,"impact":0.10,"equite":0.40,"aide":0.10,"experience":0.20}
 }
 
-# Calcul score final
 if profil == "ordinaire":
     df_filtered["score_final"] = df_filtered[["clarte","organisation","equite","aide","motivation","stress_inv","impact_inv"]].mean(axis=1)
 else:
     p = poids[profil]
     df_filtered["score_final"] = (
-        df_filtered["pedagogie"]*p["pedagogie"]
-        + df_filtered["impact_inv"]*p["impact"]
-        + df_filtered["equite"]*p["equite"]
-        + df_filtered["aide"]*p["aide"]
-        + df_filtered["experience"]*p["experience"]
+        df_filtered["pedagogie"]*p["pedagogie"] +
+        df_filtered["impact_inv"]*p["impact"] +
+        df_filtered["equite"]*p["equite"] +
+        df_filtered["aide"]*p["aide"] +
+        df_filtered["experience"]*p["experience"]
     )
 
 df_filtered = df_filtered.sort_values("score_final", ascending=False).reset_index(drop=True)
@@ -206,7 +210,7 @@ st.table(df_filtered[["prof","score_final"]].round(2))
 top3 = df_filtered.head(3)
 if not top3.empty:
     st.subheader("🏆 Top 3 professeurs")
-    colors = ["gold","silver","bronze"][:len(top3)]
+    colors = ["gold","silver","peru"][:len(top3)]
     fig, ax = plt.subplots()
     ax.barh(top3["prof"], top3["score_final"], color=colors)
     ax.invert_yaxis()
