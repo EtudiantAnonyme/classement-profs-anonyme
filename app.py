@@ -18,9 +18,9 @@ try:
     df = pd.read_csv("avis.csv")
 except FileNotFoundError:
     df = pd.DataFrame(columns=[
-        "prof", "programme", "cours",
-        "clarte", "organisation", "equite", "aide",
-        "stress", "motivation", "impact_note",
+        "prof","programme","cours",
+        "clarte","organisation","equite","aide",
+        "stress","motivation","impact_note",
         "user_token"
     ])
     df.to_csv("avis.csv", index=False)
@@ -28,26 +28,16 @@ except FileNotFoundError:
 # =====================================================
 # COLONNES REQUISES
 # =====================================================
-numeric_cols = [
-    "clarte", "organisation", "equite", "aide",
-    "stress", "motivation", "impact_note"
-]
-
-required_cols = [
-    "prof", "programme", "cours",
-    "clarte", "organisation", "equite", "aide",
-    "stress", "motivation", "impact_note", "user_token"
-]
-
+numeric_cols = ["clarte","organisation","equite","aide","stress","motivation","impact_note"]
+required_cols = ["prof","programme","cours","clarte","organisation","equite","aide","stress","motivation","impact_note","user_token"]
 for col in required_cols:
     if col not in df.columns:
         df[col] = pd.Series(dtype=float if col in numeric_cols else str)
 
-# =====================================================
-# NETTOYAGE DES DONNÉES
-# =====================================================
+# Nettoyage numérique
 df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
 df = df.dropna(subset=numeric_cols, how="all")
+
 teachers = sorted(df["prof"].dropna().unique().tolist())
 
 # =====================================================
@@ -110,53 +100,34 @@ st.header("Ajouter un avis")
 
 with st.form("formulaire_avis"):
 
-    prof_existant = st.selectbox(
-        "Professeur existant",
-        [""] + teachers
-    )
-
-    prof_nouveau = st.text_input(
-        "Ou ajouter un nouveau professeur"
-    )
-
+    prof_existant = st.selectbox("Professeur existant", [""] + teachers, key="prof_select")
+    prof_nouveau = st.text_input("Ou ajouter un nouveau professeur", key="prof_new")
     prof = prof_nouveau.strip() if prof_nouveau.strip() else prof_existant
 
-    programme = st.selectbox(
-        "Programme",
-        list(programs.keys())
-    )
+    # Programme sélectionné
+    programme = st.selectbox("Programme", list(programs.keys()), key="programme_select")
 
-    # ✅ BUG CORRIGÉ : cours dépend du programme choisi
-    cours = st.selectbox(
-        "Cours",
-        programs[programme]
-    )
+    # Cours dépend du programme
+    cours = st.selectbox("Cours", programs[programme], key="cours_select")
 
-    clarte = st.slider("Clarté", 1, 10, 5)
-    organisation = st.slider("Organisation", 1, 10, 5)
-    equite = st.slider("Équité", 1, 10, 5)
-    aide = st.slider("Aide", 1, 10, 5)
-    stress = st.slider("Stress (bas = mieux)", 1, 10, 5)
-    motivation = st.slider("Motivation", 1, 10, 5)
-    impact_note = st.slider("Impact académique (bas = mieux)", 1, 10, 5)
+    clarte = st.slider("Clarté",1,10,5)
+    organisation = st.slider("Organisation",1,10,5)
+    equite = st.slider("Équité",1,10,5)
+    aide = st.slider("Aide",1,10,5)
+    stress = st.slider("Stress (bas = mieux)",1,10,5)
+    motivation = st.slider("Motivation",1,10,5)
+    impact_note = st.slider("Impact académique (bas = mieux)",1,10,5)
 
     envoyer = st.form_submit_button("Soumettre l’avis")
 
     if envoyer and prof:
-
-        # ANTI-SPAM : 1 vote par professeur par navigateur
         deja_vote = ((df["user_token"] == USER_TOKEN) & (df["prof"] == prof)).any()
-
         if deja_vote:
             st.warning("Vous avez déjà évalué ce professeur.")
         else:
-            # Correction automatique des fautes de frappe
             def norm(x): return x.lower().strip()
             if teachers:
-                match, score = process.extractOne(
-                    norm(prof),
-                    [norm(t) for t in teachers]
-                )
+                match, score = process.extractOne(norm(prof), [norm(t) for t in teachers])
                 if score >= 85:
                     prof = teachers[[norm(t) for t in teachers].index(match)]
 
@@ -187,15 +158,8 @@ if df.empty:
     st.info("Aucun avis disponible pour le moment.")
     st.stop()
 
-cours_choisi = st.selectbox(
-    "Choisir un cours",
-    sorted(df["cours"].unique())
-)
-
-profil = st.selectbox(
-    "Profil étudiant",
-    ["ordinaire","cote_r","apprentissage","chill","stress_minimiser","equite_focus"]
-)
+cours_choisi = st.selectbox("Choisir un cours", sorted(df["cours"].unique()), key="choix_cours")
+profil = st.selectbox("Profil étudiant", ["ordinaire","cote_r","apprentissage","chill","stress_minimiser","equite_focus"], key="choix_profil")
 
 df_grouped = df.groupby(["prof","cours"], as_index=False)[numeric_cols].mean()
 df_filtered = df_grouped[df_grouped["cours"] == cours_choisi].copy()
@@ -207,7 +171,7 @@ df_filtered["impact_inv"] = 10 - df_filtered["impact_note"]
 df_filtered["pedagogie"] = df_filtered[["clarte","organisation"]].mean(axis=1)
 df_filtered["experience"] = df_filtered[["stress_inv","motivation"]].mean(axis=1)
 
-# Pondérations
+# Pondérations par profil
 poids = {
     "ordinaire": None,
     "cote_r": {"pedagogie":0.25,"impact":0.40,"equite":0.20,"aide":0.10,"experience":0.05},
@@ -223,11 +187,11 @@ if profil == "ordinaire":
 else:
     p = poids[profil]
     df_filtered["score_final"] = (
-        df_filtered["pedagogie"] * p["pedagogie"]
-        + df_filtered["impact_inv"] * p["impact"]
-        + df_filtered["equite"] * p["equite"]
-        + df_filtered["aide"] * p["aide"]
-        + df_filtered["experience"] * p["experience"]
+        df_filtered["pedagogie"]*p["pedagogie"]
+        + df_filtered["impact_inv"]*p["impact"]
+        + df_filtered["equite"]*p["equite"]
+        + df_filtered["aide"]*p["aide"]
+        + df_filtered["experience"]*p["experience"]
     )
 
 df_filtered = df_filtered.sort_values("score_final", ascending=False).reset_index(drop=True)
@@ -240,7 +204,6 @@ st.table(df_filtered[["prof","score_final"]].round(2))
 # TOP 3 – GRAPHIQUE
 # =====================================================
 top3 = df_filtered.head(3)
-
 if not top3.empty:
     st.subheader("🏆 Top 3 professeurs")
     colors = ["gold","silver","bronze"][:len(top3)]
