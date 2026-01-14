@@ -39,9 +39,27 @@ programs = {
     "Sciences de la nature": ["Biologie","Chimie","Physique","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
     "Sciences humaines": ["Histoire","Géographie","Psychologie","Sociologie","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
     "Arts, lettres et communication": ["Français","Communication","Littérature","Anglais","Philosophie","Éducation physique"],
-    # ... garder tous les autres programmes comme avant ...
+    "Arts visuels": ["Arts visuels","Techniques d’atelier","Histoire de l’art","Éducation physique"],
+    "Danse": ["Technique de danse","Histoire de la danse","Création chorégraphique","Éducation physique"],
+    "Techniques de l’informatique – Développement d’applications": ["Programmation","Bases de données","Développement Web","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de l’informatique – Réseaux et sécurité": ["Réseaux & sécurité","Systèmes & serveurs","Infrastructure réseau","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de laboratoire (multi‑disciplines)": ["Chimie analytique","Biologie appliquée","Physique de laboratoire","Mathématiques appliquées","Français"],
+    "Technologie du génie civil": ["Mathématiques appliquées","Topographie","Matériaux & structures","Dessin technique","Français","Anglais"],
+    "Technologie de l’architecture": ["Conception architecturale","Dessin technique","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de comptabilité et de gestion": ["Comptabilité","Gestion d’entreprise","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de services financiers et d’assurances": ["Services financiers","Risques & assurances","Mathématiques appliquées","Français","Anglais"],
+    "Techniques de diététique": ["Nutrition","Sciences alimentaires","Méthodologie diététique","Français"],
+    "Techniques de physiothérapie": ["Anatomie","Physiothérapie appliquée","Biologie humaine","Français"],
+    "Techniques de sécurité incendie": ["Sécurité incendie","Prévention des risques","Mathématiques appliquées","Français"],
+    "Techniques d’intégration multimédia": ["Multimédia","Web & design","Programmation multimédia","Français","Anglais"],
+    "Paysage et commercialisation en horticulture ornementale": ["Horticulture","Paysage","Gestion en horticulture","Français"],
+    "Muséologie": ["Documentation de collections","Conservation","Exposition","Français"],
+    "Soins infirmiers": ["Sciences infirmières","Anatomie & physiologie","Soins cliniques","Français"],
+    "Physiothérapie": ["Anatomie","Physiothérapie appliquée","Biologie","Français"],
+    "Génie civil": ["Mathématiques appliquées","Topographie","Matériaux & structures","Dessin technique","Français","Anglais"],
+    "Génie mécanique": ["Mathématiques appliquées","Physique","Mécanique","Dessin technique","Français","Anglais"],
+    "Génie informatique": ["Programmation","Algorithmique","Systèmes & réseaux","Mathématiques appliquées","Français","Anglais"]
 }
-
 # =====================================================
 # TITRE ET INFO
 # =====================================================
@@ -51,7 +69,24 @@ st.info("""
 
 Chaque critère mesure un aspect de l’enseignement ou du cours :  
 
-- **Clarté**, **Organisation**, **Équité**, **Aide**, **Motivation**, **Stress**, **Impact académique**
+- **Clarté** : Compréhension et structuration des notions par le professeur.  
+- **Organisation** : Cohérence et planification du cours et des évaluations.  
+- **Équité** : Justesse et uniformité des notes pour tous.  
+- **Aide** : Disponibilité et soutien du professeur.  
+- **Motivation** : Intérêt et engagement suscité par le cours.  
+- **Stress** : Niveau de pression ressenti (score faible = moins de stress).  
+- **Impact académique** : Influence sur la réussite et la performance de l’étudiant.
+
+### Profils étudiants
+
+Chaque profil ajuste le poids des critères pour refléter un objectif spécifique :  
+
+- **Ordinaire** : Moyenne simple de tous les critères.  
+- **Cote R** : Favorise impact académique et pédagogie.  
+- **Apprentissage** : Accent sur clarté, organisation et motivation.  
+- **Chill** : Favorise confort et expérience agréable.  
+- **Stress minimiser** : Priorité à réduire le stress et favoriser le bien-être.  
+- **Équité focus** : Accent sur la justice et l’égalité des évaluations.
 """)
 
 # =====================================================
