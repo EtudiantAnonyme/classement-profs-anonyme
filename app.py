@@ -84,24 +84,30 @@ programs = {
 # =====================================================
 st.title("Classement des professeurs – Cégep Montmorency")
 st.info("""
-### Comment sont calculés les scores (1 à 10)
+### Calcul des scores (échelle de 1 à 10)
 
-- **Clarté** : Le professeur explique clairement la matière.  
-- **Organisation** : Le cours est bien structuré et planifié.  
-- **Équité** : Les évaluations sont justes pour tous.  
-- **Aide** : Le professeur soutient les étudiants.  
-- **Motivation** : Le cours est engageant et intéressant.  
-- **Stress** : Pression ressentie (plus bas = mieux).  
-- **Impact académique (note / Z-score)** : Influence du professeur sur la note de l’étudiant.
+Chaque critère reflète un aspect de l’enseignement ou de l’expérience du cours :  
 
-### Profils étudiants
-- **Ordinaire** : Moyenne simple de tous les critères.  
-- **Cote R** : Favorise l’impact académique positif.  
-- **Apprentissage** : Accent sur pédagogie et motivation.  
-- **Chill** : Expérience agréable avec moins de stress.  
-- **Stress minimiser** : Priorité à la réduction du stress.  
-- **Équité focus** : Accent sur la justice des évaluations.
+- **Clarté** : Le professeur explique les notions de manière compréhensible et structurée.  
+- **Organisation** : Le cours est bien planifié, les évaluations sont cohérentes et le rythme adapté.  
+- **Équité** : Les notes et les évaluations sont justes et uniformes pour tous les étudiants.  
+- **Aide** : Le professeur est disponible et soutient les étudiants dans leur apprentissage.  
+- **Motivation** : Le cours est intéressant et suscite l’engagement des étudiants.  
+- **Stress** : Niveau de pression ressenti ; un score faible indique moins de stress.  
+- **Impact académique** : Influence perçue du professeur sur la performance et la réussite de l’étudiant.
+
+### Profils étudiants et pondération des critères
+
+Chaque profil correspond à un objectif d’évaluation particulier et influence le calcul du score final :  
+
+- **Ordinaire** : Score moyen simple de tous les critères, sans pondération.  
+- **Cote R** : Met l’accent sur l’impact académique et la pédagogie pour favoriser la réussite scolaire.  
+- **Apprentissage** : Valorise la clarté, l’organisation et la motivation pour favoriser l’acquisition des connaissances.  
+- **Chill** : Privilégie le confort et l’expérience agréable du cours tout en restant attentif à la pédagogie.  
+- **Stress minimiser** : Accorde la priorité à la réduction du stress et au bien-être des étudiants.  
+- **Équité focus** : Met l’accent sur la justice et l’égalité dans les évaluations et le traitement des étudiants.
 """)
+
 
 # =====================================================
 # FORMULAIRE D’AJOUT D’AVIS
