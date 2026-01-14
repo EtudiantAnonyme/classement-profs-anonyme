@@ -36,7 +36,7 @@ teachers = sorted(df["prof"].dropna().unique().tolist()) if not df.empty else []
 # PROGRAMMES ET COURS (inchangé)
 # =====================================================
 programs = { 
-    "Sciences de la nature": ["Biologie","Chimie","Physique","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
+    "Sciences de la nature": ["Biologie","Chimie","Physique","Mathématiques","Programmation en sciences","Français","Philosophie","Anglais","Éducation physique"],
     "Sciences humaines": ["Histoire","Géographie","Psychologie","Sociologie","Mathématiques","Français","Philosophie","Anglais","Éducation physique"],
     "Arts, lettres et communication": ["Français","Communication","Littérature","Anglais","Philosophie","Éducation physique"],
     "Arts visuels": ["Arts visuels","Techniques d’atelier","Histoire de l’art","Éducation physique"],
